@@ -1,0 +1,8 @@
+services:
+  postgres:
+    ports:
+      - '5432:${DATABASE_PORT}'
+    environment:
+      - POSTGRES_DB=${DATABASE_NAME}
+      - POSTGRES_PASSWORD=${DATABASE_PASSWORD}
+    image: 'postgres'
