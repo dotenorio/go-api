@@ -229,7 +229,7 @@ func OpenConn() *sql.DB {
 	return db
 }
 
-func main() {
+func setupRouter() *gin.Engine {
 	router := gin.Default()
 
 	router.GET("/users", getUsers)
@@ -237,6 +237,12 @@ func main() {
 	router.POST("/users", postUser)
 	router.PATCH("/users/:id", patchUser)
 	router.DELETE("/users/:id", deleteUser)
+
+	return router
+}
+
+func main() {
+	router := setupRouter()
 
 	fmt.Println("Server running on port 8080")
 	router.Run("localhost:8080")
