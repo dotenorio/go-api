@@ -16,29 +16,30 @@ import (
 type User struct {
 	Id        string         `gorm:"primaryKey;type:uuid;default:gen_random_uuid()" json:"id"`
 	Name      string         `gorm:"not null" json:"name"`
-	Email     string         `gorm:"unique;not null" json:"email"`
+	Email     string         `gorm:"not null" json:"email"`
 	CreatedAt time.Time      `gorm:"default:now()" json:"created_at"`
-	UpdatedAt *time.Time     `json:"updated_at"`
+	UpdatedAt *time.Time     `gorm:"default:null" json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at"`
 }
 
 var db *gorm.DB
 
 func main() {
-
 	// Carrega as variáveis de ambiente do arquivo .env
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Erro ao carregar o arquivo .env")
+		log.Fatal("Error on load .env file.")
 	}
 
 	// Acessa as variáveis de ambiente
-	dbUser := os.Getenv("DATA_BASE_USER")
+	appPort := os.Getenv("API_PORT")
+	dbUser := os.Getenv("DATABASE_USER")
 	dbPassword := os.Getenv("DATABASE_PASSWORD")
 	dbName := os.Getenv("DATABASE_NAME")
 
-	// Exibe as variáveis
-	fmt.Println("DATA_BASE_USER:", dbUser)
+	// Exibe as variáveis de ambiente
+	fmt.Println("API_PORT:", appPort)
+	fmt.Println("DATABASE_USER:", dbUser)
 	fmt.Println("DATABASE_PASSWORD:", dbPassword)
 	fmt.Println("DATABASE_NAME:", dbName)
 
@@ -47,13 +48,13 @@ func main() {
 
 	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic("Falha ao conectar ao banco de dados")
+		panic("Fail on connect to database.")
 	}
 
 	// Cria a tabela automaticamente (se não existir)
 	err = db.AutoMigrate(&User{})
 	if err != nil {
-		panic("Falha ao migrar o modelo User")
+		panic("Fail do migrate model User.")
 	}
 
 	// Configura o router do Gin
@@ -67,8 +68,8 @@ func main() {
 	router.DELETE("/users/:id", deleteUser)
 
 	// Inicia o servidor
-	fmt.Println("Server running on port 8080")
-	router.Run("localhost:8080")
+	fmt.Printf("Server running on port:%s", appPort)
+	router.Run(fmt.Sprintf(":%s", appPort))
 }
 
 // Retorna todos os usuários
@@ -108,7 +109,7 @@ func postUser(c *gin.Context) {
 
 	// Verifica se o usuário já existe
 	var existingUser User
-	result := db.Where("email = ?", newUser.Email).First(&existingUser)
+	result := db.Where("email = ? AND deleted_at IS NULL", newUser.Email).First(&existingUser)
 	if result.RowsAffected > 0 {
 		c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "user already exists"})
 		return
@@ -139,9 +140,10 @@ func patchUser(c *gin.Context) {
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "user not found"})
-		} else {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": result.Error.Error()})
+			return
 		}
+
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": result.Error.Error()})
 		return
 	}
 
@@ -166,9 +168,10 @@ func deleteUser(c *gin.Context) {
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
 			c.IndentedJSON(http.StatusNotFound, gin.H{"message": "user not found"})
-		} else {
-			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": result.Error.Error()})
+			return
 		}
+
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": result.Error.Error()})
 		return
 	}
 
